@@ -6,7 +6,7 @@
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
 
-#if (SSD1306_LCDHEIGHT != 32)
+#if (SSD1306_LCDHEIGHT != 64)
 #error("Height incorrect, please fix Adafruit_SSD1306.h!");
 #endif
 
@@ -22,6 +22,17 @@ enum IOState
     high = true
   };
 
+
+enum ActionType
+  {
+    timer = 0,
+    drop,
+    output,
+    trigger,
+    flash,
+    MAX_ACTION_TYPE
+  };
+
 bool debug = true;
 
 int analogX = 0;
@@ -35,11 +46,11 @@ int prevPy  = 0;
 
 // //////////////////////////////////////////////////////////////////////////
 
-class Cycle
+class Action
 {
  public:
-  Cycle()    {}
-  ~Cycle()   {}
+  Action()    {}
+  ~Action()   {}
 
  private:
   OutputType outputType;
@@ -80,8 +91,8 @@ class Cycle
 
 //
 //////////////////////////////////////////////////////////////////////////
-class Sequencer { public: Sequencer() { memset(cycles, 0, 100 *
-					       sizeof(Cycle*)); } ~Sequencer() {}
+class TimeLine { public: TimeLine() { memset(cycles, 0, 100 *
+					       sizeof(Action*)); } ~TimeLine() {}
 
  public:
   void setCurrentCursorPosition(int pos)
@@ -89,30 +100,23 @@ class Sequencer { public: Sequencer() { memset(cycles, 0, 100 *
 
   }
 
-  void addCycle()
+  void addAction()
   {
-    Cycle *c = new Cycle();
-    this->cycles[this->cycleNb] = c;
-    this->cycleNb++;
+    Action *c = new Action();
+    this->actions[this->actionNb] = c;
+    this->actionNb++;
   }
 
-  void removeLastCycle()
+  void removeLastAction()
   {
-    this->cycleNb--;
-    if (this->currentPage == this->cycleNb)
+    this->actionNB--;
+    if (this->currentPage == this->actionNB)
       {
 	this->currentPage--;
 	px -= this->posPerPage;
       }
-    delete this->cycles[this->cycleNb];
-    this->cycles[this->cycleNb] = NULL;
-  }
-
-  const int posPerPage = 10;
-  void setCurrentPosX(int posx)
-  {
-    currentPage = posx / posPerPage;
-    pageCursorPosition = posx % posPerPage;
+    delete this->cycles[this->actionNB];
+    this->cycles[this->actionNB] = NULL;
   }
 
   void setYincrement(int ync)
@@ -120,7 +124,7 @@ class Sequencer { public: Sequencer() { memset(cycles, 0, 100 *
 
   }
 
-  void displayPage()
+  void displayAction()
   {
 
   }
@@ -130,18 +134,18 @@ class Sequencer { public: Sequencer() { memset(cycles, 0, 100 *
 
   }
 
-  void startSequence()
+  void startTimeLine()
   {
 
   }
 
  private:
-  int currentPage;
-  int pageCursorPosition;
+  int currentAction;
+  int ActionCursorPosition;
 
  private:
-  int cycleNb = 0;
-  Cycle* cycles[100];
+  int actionNb = 0;
+  Action* actions[100];
 
 };
 
@@ -161,7 +165,7 @@ void buttonReleaseCallback()
 }
 // //////////////////////////////////////////////////////////////////////////
 
-Sequencer *sequencer = NULL;
+TimeLine *timeLine = NULL;
 
 void setup()
 {
@@ -178,7 +182,7 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(2), buttonReleaseCallback, RISING);
   attachInterrupt(digitalPinToInterrupt(3), buttonPressCallback, FALLING);
 
-  sequencer = new Sequencer();
+  timeLine = new TimeLine();
 
 }
 
@@ -205,17 +209,18 @@ void loop()
   prevPx = px;
   prevPy = py;
 
+  // clear display
   display.clearDisplay();
 
   // do display stuff
 
-  sequencer->setCurrentPosX(px);
+  timeLine->setCurrentPosX(px);
 
-  sequencer->setYincrement(yInc);
+  timeLine->setYincrement(yInc);
 
-  sequencer->buttonAction(btn);
+  timeLine->buttonAction(btn);
 
-  sequencer->displayPage();
+  timeLine->displayPage();
 
 
   // debug
